@@ -1,0 +1,22 @@
+[package]
+name = "llama"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+anyhow = { workspace = true }
+candle-core = { workspace = true, features = ["cuda", "cudarc", "cudnn"] }
+candle-kernels = { workspace = true, optional = true }
+candle-nn = { workspace = true }
+candle-transformers = { workspace = true, features = ["cuda"] }
+clap = { workspace = true, features = ["derive"] }
+cudarc = { workspace = true, optional = true }
+hf-hub = { workspace = true }
+common = { path = "../common" }
+tokenizers = { workspace = true, features = ["onig"] }
+tracing-chrome = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+rand = { workspace = true }
