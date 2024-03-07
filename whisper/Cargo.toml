@@ -9,11 +9,9 @@ edition = "2021"
 anyhow = { workspace = true }
 byteorder = "1.5.0"
 candle-core = { workspace = true, features = ["cuda", "cudarc", "cudnn"] }
-candle-kernels = { workspace = true, optional = true }
 candle-nn = { workspace = true }
 candle-transformers = { workspace = true, features = ["cuda"] }
 clap = { workspace = true, features = ["derive"] }
-cudarc = { workspace = true, optional = true }
 hf-hub = { workspace = true }
 console = "0.15.8"
 indicatif = "0.17.7"

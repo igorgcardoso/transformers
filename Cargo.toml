@@ -1,16 +1,16 @@
 [workspace]
-members = ["whisper", "t5", "llama", "trocr", "common"]
+members = ["whisper", "t5", "llama", "trocr", "common", "bert"]
 resolver = "2"
 
 [workspace.dependencies]
 anyhow = "1.0.79"
 candle-core = { version = "0.3.3", features = ["cuda", "cudarc", "cudnn"] }
 candle-nn = "0.3.3"
-candle-kernels = { version = "0.3.3" }
 candle-transformers = { version = "0.3.3", features = ["cuda"] }
 clap = { version = "4.4.18", features = ["derive"] }
-cudarc = { version = "0.10" }
+env_logger = "0.11"
 hf-hub = { version = "0.3.2", features = ["tokio"] }
+log = "0.4.21"
 safetensors = "0.4.1"
 serde = { version = "1.0.193", features = ["derive"] }
 serde_json = "1.0.108"
