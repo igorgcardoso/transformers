@@ -107,7 +107,7 @@ pub fn run(args: Args) -> Result<Tensor> {
     let token_type_ids = token_ids.zeros_like()?;
     info!("Loaded and encoded {:?}", start.elapsed());
 
-    let mut response = Tensor::zeros((1, 1), DTYPE, &device)?;
+    let mut response = Tensor::zeros((1, 1), DTYPE, device)?;
 
     for idx in 0..args.n {
         let start = std::time::Instant::now();
