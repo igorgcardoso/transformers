@@ -75,12 +75,12 @@ impl T5ModelBuilder {
         let config_filename = match &args.config_file {
             Some(filename) => Self::get_local_or_remote_file(filename, &api)?,
             None => match args.which {
-                Which::T5Small => api.get("model.json")?,
-                Which::FlanT5Small => api.get("model-flan-t5-small.json")?,
-                Which::FlanT5Base => api.get("model-flan-t5-base.json")?,
-                Which::FlanT5Large => api.get("model-flan-t5-large.json")?,
-                Which::FlanT5Xl => api.get("model-flan-t5-xl.json")?,
-                Which::FlanT5Xxl => api.get("model-flan-t5-xxl.json")?,
+                Which::T5Small => api.get("config.json")?,
+                Which::FlanT5Small => api.get("config-flan-t5-small.json")?,
+                Which::FlanT5Base => api.get("config-flan-t5-base.json")?,
+                Which::FlanT5Large => api.get("config-flan-t5-large.json")?,
+                Which::FlanT5Xl => api.get("config-flan-t5-xl.json")?,
+                Which::FlanT5Xxl => api.get("config-flan-t5-xxl.json")?,
             },
         };
         let tokenizer_filename = api.get("tokenizer.json")?;
