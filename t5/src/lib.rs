@@ -20,7 +20,7 @@ pub struct Args {
     /// The model repository to use on the HuggingFace Hub
     pub model_id: Option<String>,
 
-    revision: Option<String>,
+    pub revision: Option<String>,
 
     /// Enable/disable decoding
     pub disable_cache: bool,
