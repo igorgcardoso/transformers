@@ -3,6 +3,7 @@
     "bert",
     "gelu",
     "Gelu",
+    "gguf",
     "keepdim",
     "mmaped",
     "pytorch",
