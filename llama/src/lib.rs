@@ -326,7 +326,7 @@ pub fn generate(args: Args) -> anyhow::Result<String> {
     let model_path = args.model()?;
     let mut file = std::fs::File::open(&model_path)?;
     let start = std::time::Instant::now();
-    let device = common::device(false)?;
+    let device = common::device(true)?;
 
     let mut model = match model_path.extension().and_then(|v| v.to_str()) {
         Some("gguf") => {
