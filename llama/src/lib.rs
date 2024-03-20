@@ -1,6 +1,6 @@
 use anyhow::{bail, Result};
 use clap::{Parser, ValueEnum};
-use std::{io::Write, path::PathBuf};
+use std::path::PathBuf;
 use tokenizers::Tokenizer;
 
 use candle_core::{
@@ -13,8 +13,8 @@ use model::ModelWeights;
 
 #[derive(Debug)]
 pub enum Prompt {
-    Interactive,
-    Chat,
+    // Interactive,
+    // Chat,
     One(String),
 }
 
@@ -322,7 +322,7 @@ fn format_size(size_in_bytes: usize) -> String {
     }
 }
 
-pub fn generate(args: Args) -> anyhow::Result<()> {
+pub fn generate(args: Args) -> anyhow::Result<String> {
     use tracing_chrome::ChromeLayerBuilder;
     use tracing_subscriber::prelude::*;
     let temperature = if args.temperature == 0. {
@@ -337,18 +337,6 @@ pub fn generate(args: Args) -> anyhow::Result<()> {
     } else {
         None
     };
-
-    println!(
-        "avx: {}, neon: {}, simd128: {}, f16c: {}",
-        candle_core::utils::with_avx(),
-        candle_core::utils::with_neon(),
-        candle_core::utils::with_simd128(),
-        candle_core::utils::with_f16c()
-    );
-    println!(
-        "temp: {:.2} repeat-penalty: {:.2} repeat-last-n: {}",
-        args.temperature, args.repeat_penalty, args.repeat_last_n
-    );
 
     let model_path = args.model()?;
     let mut file = std::fs::File::open(&model_path)?;
@@ -375,19 +363,6 @@ pub fn generate(args: Args) -> anyhow::Result<()> {
         Some("ggml" | "bin") | Some(_) | None => {
             let model = ggml_file::Content::read(&mut file, &device)
                 .map_err(|e| e.with_path(model_path))?;
-            let mut total_size_in_bytes = 0;
-            for (_, tensor) in model.tensors.iter() {
-                let elem_count = tensor.shape().elem_count();
-                total_size_in_bytes +=
-                    elem_count * tensor.dtype().type_size() / tensor.dtype().block_size();
-            }
-            println!(
-                "loaded {:?} tensors ({}) in {:.2}s",
-                model.tensors.len(),
-                &format_size(total_size_in_bytes),
-                start.elapsed().as_secs_f32(),
-            );
-            println!("params: {:?}", model.hparams);
             let default_gqa = match args.which {
                 Which::L7b
                 | Which::L13b
@@ -413,22 +388,23 @@ pub fn generate(args: Args) -> anyhow::Result<()> {
             ModelWeights::from_ggml(model, args.gqa.unwrap_or(default_gqa))?
         }
     };
-    println!("model built");
 
     let tokenizer = args.tokenizer()?;
     let mut tos = TokenOutputStream::new(tokenizer);
     let prompt = match Some(args.prompt).as_deref() {
-        Some("chat") => Prompt::Chat,
-        Some("interactive") => Prompt::Interactive,
+        // Some("chat") => Prompt::Chat,
+        // Some("interactive") => Prompt::Interactive,
         Some(s) => Prompt::One(s.to_string()),
         None => bail!("Prompt not provided"),
     };
 
-    let mut pre_prompt_tokens = vec![];
-    for prompt_index in 0.. {
+    let /* mut */ pre_prompt_tokens = vec![];
+
+    let mut response = String::new();
+    for _prompt_index in 0.. {
         let prompt_str = match &prompt {
             Prompt::One(prompt) => prompt.clone(),
-            Prompt::Interactive | Prompt::Chat => {
+            /*Prompt::Interactive | Prompt::Chat => {
                 let is_interactive = matches!(prompt, Prompt::Interactive);
                 print!("> ");
                 std::io::stdout().flush()?;
@@ -454,8 +430,8 @@ pub fn generate(args: Args) -> anyhow::Result<()> {
                     prompt
                 }
             }
+            */
         };
-        print!("{}", &prompt_str);
         let tokens = tos
             .tokenizer()
             .encode(prompt_str, true)
@@ -482,18 +458,15 @@ pub fn generate(args: Args) -> anyhow::Result<()> {
         };
         let mut logits_processor = LogitsProcessor::new(seed, temperature, args.top_p);
 
-        let start_prompt_processing = std::time::Instant::now();
         let mut next_token = {
             let input = Tensor::new(prompt_tokens.as_slice(), &device)?.unsqueeze(0)?;
             let logits = model.forward(&input, 0)?;
             let logits = logits.squeeze(0)?;
             logits_processor.sample(&logits)?
         };
-        let prompt_dt = start_prompt_processing.elapsed();
         all_tokens.push(next_token);
         if let Some(t) = tos.next_token(next_token)? {
-            print!("{t}");
-            std::io::stdout().flush()?;
+            response = format!("{response}{t}");
         }
 
         let eos_token = if args.which.is_open_chat() {
@@ -502,8 +475,6 @@ pub fn generate(args: Args) -> anyhow::Result<()> {
             "</s>"
         };
         let eos_token = *tos.tokenizer().get_vocab(true).get(eos_token).unwrap();
-        let start_post_prompt = std::time::Instant::now();
-        let mut sampled = 0;
         for index in 0..to_sample {
             let input = Tensor::new(&[next_token], &device)?.unsqueeze(0)?;
             let logits = model.forward(&input, prompt_tokens.len() + index)?;
@@ -521,37 +492,24 @@ pub fn generate(args: Args) -> anyhow::Result<()> {
             next_token = logits_processor.sample(&logits)?;
             all_tokens.push(next_token);
             if let Some(t) = tos.next_token(next_token)? {
-                print!("{t}");
-                std::io::stdout().flush()?;
+                response = format!("{response}{t}");
             }
-            sampled += 1;
             if next_token == eos_token {
                 break;
             };
         }
         if let Some(rest) = tos.decode_rest().map_err(candle_core::Error::msg)? {
-            print!("{rest}");
+            response = format!("{response}{rest}");
         }
-        std::io::stdout().flush()?;
-        let dt = start_post_prompt.elapsed();
-        println!(
-            "\n\n{:4} prompt tokens processed: {:.2} token/s",
-            prompt_tokens.len(),
-            prompt_tokens.len() as f64 / prompt_dt.as_secs_f64(),
-        );
-        println!(
-            "{sampled:4} tokens generated: {:.2} token/s",
-            sampled as f64 / dt.as_secs_f64(),
-        );
 
         match prompt {
             Prompt::One(_) => break,
-            Prompt::Interactive => {}
-            Prompt::Chat => {
-                pre_prompt_tokens = [prompt_tokens.as_slice(), all_tokens.as_slice()].concat()
-            }
+            // Prompt::Interactive => {}
+            // Prompt::Chat => {
+            // pre_prompt_tokens = [prompt_tokens.as_slice(), all_tokens.as_slice()].concat()
+            // }
         }
     }
 
-    Ok(())
+    Ok(response)
 }
